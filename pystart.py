@@ -166,6 +166,7 @@ if __name__ == "__main__":
 	options = get_all_options (sys.argv)
 
 
+
 	#--- file name ---
 	if not FILENAME_OPTION in options.keys():
 		print_error ("you didn't enter a filename", "the syntax is -f filename")
@@ -173,14 +174,12 @@ if __name__ == "__main__":
 	script_filename = os.path.join(os.getcwd(), script_filename_raw)
 	print "---> creating script at: ", script_filename
 	script_file = open (script_filename, 'w')
-	del options[FILENAME_OPTION]
 
 	#--- import statements ---
 	if IMPORT_OPTION in options.keys ():
 		import_modules = options[IMPORT_OPTION]
 		print "---> import modules: ", ', '.join(import_modules)
 		insert_import_statements(script_file, import_modules)
-		del options[IMPORT_OPTION]
 
 	#--- error function ---
 	if ERROR_OPTION in options.keys ():
