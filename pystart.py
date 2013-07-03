@@ -15,10 +15,10 @@ import sys
 FILENAME_OPTION = '-f'
 IMPORT_OPTION = '-i'
 SECTIONS_OPTION = '-s'
-
 MAIN_OPTION = '-m'
 ERROR_OPTION = '-e'
-valid_options = ['-m', '-e']
+valid_options = [FILENAME_OPTION, IMPORT_OPTION, SECTIONS_OPTION, MAIN_OPTION, ERROR_OPTION]
+valid_options_string = ', '.join(valid_options)
 
 MAIN_OPERATION_STRING = 'if __name__ == "__main__":'
 ERROR_FUNCTION_STRING = """# Function: print_error
@@ -59,13 +59,17 @@ def get_arguments (args, option):
 	num_of_args = len(args)
 
 	if option in args:
-
+		print option
 		index = args.index (option)
 		return_args = []
 		
 		i = index + 1
+		if not i < num_of_args:
+			return None
+
 		current_arg = args[i]
 		while i < num_of_args and current_arg[0] != '-':
+			print "	" + current_arg
 			return_args.append (current_arg)
 			i += 1
 			if i < num_of_args:
@@ -75,12 +79,28 @@ def get_arguments (args, option):
 
 	return None
 
-# Function: get_other_options
-# ---------------------------
-# will return the intersection of valid options and passed options
-def get_other_options (args):
 
-	return [option for option in args if option in valid_options]
+
+# Function: get_all_options
+# -------------------------
+# given the args, returns all options as a dict mapping the option to its args
+def get_all_options (args):
+	options = {}
+
+	selected_options = []
+	for arg in args:
+		if arg[0] == '-':
+			selected_options.append (arg)
+
+	for option in selected_options:
+		if not option in valid_options:
+			print_error ("you tried an invalid option: " + option, "try one of these: " + valid_options_string)
+		this_option_args = get_arguments (args, option)
+		options[option] = this_option_args
+
+	return options
+
+
 
 
 
@@ -99,7 +119,6 @@ def insert_import_statements (script_file, import_modules):
 	for module in import_modules:
 		script_file.write ('import ' + module + '\n')
 	script_file.write('\n\n')
-
 
 # Function: insert_sections
 # -------------------------
@@ -123,8 +142,6 @@ def insert_sections (script_file, section_names):
 		script_file.write ('#' * num_of_hashtags + "\n")
 		script_file.write ('\n\n')
 
-
-
 # Function: insert_error_function
 # -------------------------------
 # will insert an error function at the top of the file, after import statements
@@ -143,41 +160,44 @@ def insert_main_operation (script_file):
 
 
 
-
 if __name__ == "__main__":
 
+	#--- get options dict ---
+	options = get_all_options (sys.argv)
+
+
 	#--- file name ---
-	script_filename = get_arguments (sys.argv, FILENAME_OPTION)
-	if not script_filename:
+	if not FILENAME_OPTION in options.keys():
 		print_error ("you didn't enter a filename", "the syntax is -f filename")
-	script_filename = os.path.join(os.getcwd(), script_filename[0])
+	script_filename_raw = options[FILENAME_OPTION][0]
+	script_filename = os.path.join(os.getcwd(), script_filename_raw)
 	print "---> creating script at: ", script_filename
+	script_file = open (script_filename, 'w')
+	del options[FILENAME_OPTION]
 
-	#--- import options ---
-	import_modules = get_arguments (sys.argv, IMPORT_OPTION)
-	print "---> import modules: ", ', '.join(import_modules)
+	#--- import statements ---
+	if IMPORT_OPTION in options.keys ():
+		import_modules = options[IMPORT_OPTION]
+		print "---> import modules: ", ', '.join(import_modules)
+		insert_import_statements(script_file, import_modules)
+		del options[IMPORT_OPTION]
 
-	#--- sections options ---
-	section_names = get_arguments (sys.argv, SECTIONS_OPTION)
-	print "---> sections: ", ', '.join(section_names)
-
-	#--- other options ---
-	other_options = get_other_options (sys.argv)
-
-	#--- open the file ---
-	script_file = open(script_filename, 'w')
-	insert_import_statements (script_file, import_modules)
-	
-	if ERROR_OPTION in other_options:
+	#--- error function ---
+	if ERROR_OPTION in options.keys ():
 		print "---> adding error function"
 		insert_error_function (script_file)
 
-	insert_sections (script_file, section_names)
+	#--- sections ---
+	if SECTIONS_OPTION in options.keys ():	
+		section_names = options[SECTIONS_OPTION]
+		print "---> sections: ", ', '.join(section_names)
+		insert_sections (script_file, section_names)
+		del options[SECTIONS_OPTION]
 
-	if MAIN_OPTION in other_options:
+	#--- main operation ---
+	if MAIN_OPTION in options.keys():
 		print "---> adding main operation section"
 		insert_main_operation (script_file)
-
 
 
 	script_file.close ()
